@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "car-auction"
+version = "0.1.0"
+description = "Hong Kong TD vehicle registration mark auction result crawler"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "requests",
+  "beautifulsoup4",
+  "pandas",
+  "python-dateutil",
+  "PyMuPDF",
+  "openpyxl",
+]
+
+[project.optional-dependencies]
+ocr = [
+  "rapidocr-onnxruntime",
+  "onnxruntime",
+  "numpy",
+]
+
+[project.scripts]
+car-auction = "car_auction.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

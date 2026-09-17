@@ -1,0 +1,27 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# IDE/editor
+.vscode/
+.idea/
+
+# Data outputs (keep repo small; regenerate from pipeline)
+data/raw/
+data/db/
+data/processed/
+!data/processed/.gitkeep
+
+# Jupyter / exploratory leftovers
+.ipynb_checkpoints/
+notebooks/
+
+# Local package metadata
+src/*.egg-info/
+*.egg-info/

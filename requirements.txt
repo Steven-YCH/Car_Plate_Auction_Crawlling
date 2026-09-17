@@ -1,0 +1,12 @@
+requests
+beautifulsoup4
+pandas
+python-dateutil
+PyMuPDF
+openpyxl
+
+# Optional OCR fallback for older/garbled TVRM PDFs (recommended):
+#   pip install rapidocr-onnxruntime onnxruntime numpy
+#
+# Heavy alternative:
+#   pip install paddleocr paddlepaddle
