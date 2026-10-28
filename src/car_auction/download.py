@@ -9,6 +9,7 @@ from typing import Iterable, Tuple
 
 import requests
 
+from . import http
 from .config import download as dl_cfg, paths
 from .discovery.pvrm_index import DiscoveredPDF
 
@@ -42,17 +43,12 @@ def download_pdf(pdf: DiscoveredPDF) -> Tuple[str, str]:
         # Compute hash of existing file
         return local_path, _sha256_of_file(local_path)
 
-    for attempt in range(1, dl_cfg.max_retries + 1):
-        try:
-            resp = requests.get(pdf.url, timeout=dl_cfg.timeout_seconds)
-            resp.raise_for_status()
-            with open(local_path, "wb") as f:
-                f.write(resp.content)
-            file_hash = _sha256_of_file(local_path)
-            return local_path, file_hash
-        except requests.RequestException:
-            if attempt == dl_cfg.max_retries:
-                raise
+    resp = http.get(pdf.url, timeout=dl_cfg.timeout_seconds)
+    resp.raise_for_status()
+    with open(local_path, "wb") as f:
+        f.write(resp.content)
+    file_hash = _sha256_of_file(local_path)
+    return local_path, file_hash
 
 
 def _sha256_of_file(path: str) -> str:

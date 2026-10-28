@@ -1,17 +1,15 @@
-"""Small runnable checks for restored package functionality."""
+"""Smoke tests for core parsing helpers (no network required)."""
 
 from __future__ import annotations
 
-import sys
 from datetime import date
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
 
 from car_auction.dates import extract_date_from_text
 from car_auction.parsing.amounts import is_amount_or_unsold, parse_amount_token
 from car_auction.parsing.tvrm import _parse_tvrm_tokens
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_dates():
@@ -52,6 +50,13 @@ def test_tvrm_token_triples():
     assert lots[3] == ("WW 765", 3000, None)
 
 
+def test_http_config_defaults():
+    from car_auction.config import download
+
+    assert download.request_delay_seconds >= 0
+    assert "car-auction" in download.user_agent
+
+
 def test_parse_local_samples_if_present():
     pvrm = ROOT / "data/raw/pvrm/PVRMs%20Auction%20Result%20Handout%2018%20May%202025.Chin.pdf"
     tvrm = ROOT / "data/raw/tvrm/tvrm_auction_result_20250517_chi.pdf"
@@ -63,11 +68,3 @@ def test_parse_local_samples_if_present():
     tvrm_lots = parse_tvrm_pdf(str(tvrm))
     assert pvrm_lots and len(pvrm_lots) >= 50
     assert tvrm_lots and len(tvrm_lots) >= 50
-
-
-if __name__ == "__main__":
-    test_dates()
-    test_amounts()
-    test_tvrm_token_triples()
-    test_parse_local_samples_if_present()
-    print("ok")

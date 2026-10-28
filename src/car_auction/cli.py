@@ -29,7 +29,9 @@ def cmd_download(args: argparse.Namespace) -> None:
 
 def cmd_export(args: argparse.Namespace) -> None:
     db.init_db()
-    out_path = args.out or paths.processed + "/auction_lots.csv"
+    from pathlib import Path
+
+    out_path = args.out or str(Path(paths.processed) / "auction_lots.csv")
 
     from .db import get_connection
 

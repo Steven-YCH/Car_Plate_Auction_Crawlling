@@ -46,6 +46,11 @@ class DiscoverySettings:
 class DownloadSettings:
     timeout_seconds: int = 20
     max_retries: int = 3
+    request_delay_seconds: float = 0.35
+    user_agent: str = (
+        "car-auction/0.1 (+https://github.com/Steven-YCH/Car_Plate_Auction_Crawlling; "
+        "portfolio research crawler; contact via GitHub issues)"
+    )
 
 
 @dataclass(frozen=True)

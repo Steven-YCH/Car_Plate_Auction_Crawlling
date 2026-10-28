@@ -1,29 +1,56 @@
-# Car License Auction Result Crawler
+# Hong Kong Car License Auction Result Crawler
 
-Build a local database of Hong Kong vehicle registration mark (VRM) auction
-results from the Transport Department (TD) website.
+[![CI](https://github.com/Steven-YCH/Car_Plate_Auction_Crawlling/actions/workflows/ci.yml/badge.svg)](https://github.com/Steven-YCH/Car_Plate_Auction_Crawlling/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Build a **local SQLite database** of Hong Kong vehicle registration mark (VRM)
+auction results published by the Transport Department (TD).
 
 Supports both auction types:
 
 - **PVRM** — Personalized Vehicle Registration Marks
 - **TVRM** — Traditional Vehicle Registration Marks
 
+> Repo folder name keeps the historical spelling `Crawlling`. The Python package
+> is `car_auction` / console script `car-auction`.
+
+## Why this project is interesting
+
+Most “portfolio scrapers” hit a clean JSON API. This one has to deal with
+**messy real-world government PDFs**:
+
+- TD publishes results as PDFs linked from index pages
+- historical TVRM files used many filename patterns over decades
+- older PDFs have broken fonts / ToUnicode maps, so OCR fallback is required
+- lot rows encode sold prices, unsold (`U/S`), and special-fee `@amount` cases
+- auction dates must be inferred from headers, filenames, labels, and URLs
+
+```text
+TD index pages / date-URL templates
+        │
+        ▼
+discovery/*  ──►  download (data/raw/)  ──►  parse (+ OCR)  ──►  SQLite
+                                                              │
+                                                              └─► CSV / Excel
+```
+
 ## Features
 
-- Discover auction result PDFs from TD index pages
-- Optional legacy TVRM URL template probing (many historical filename patterns)
-- Download PDFs to `data/raw/` (skips files already on disk)
-- Parse plate + auction price (with OCR fallback for older garbled TVRM PDFs)
-- Store results in SQLite (`data/db/auction.db`)
-- Export consolidated CSV / Excel
-- Resumable scrape scripts that skip URLs already stored in the DB
+- Discover auction-result PDFs from TD index pages
+- Optional legacy TVRM URL template probing
+- Polite HTTP client (shared session, User-Agent, delay, retries)
+- Skip PDFs already on disk; resumable scrape scripts skip URLs already in DB
+- Parse plate + auction price (OCR fallback for older garbled TVRM PDFs)
+- Store results in SQLite and export CSV / Excel
 
-## Project Layout
+## Project layout
 
 ```text
 src/car_auction/
-  config.py          # Settings
-  dates.py           # Auction-date inference from filenames/headers
+  config.py          # Settings (paths, delays, UA)
+  http.py            # Shared Session + throttle + retry
+  dates.py           # Auction-date inference
   models.py          # AuctionEvent / AuctionLot
   db.py              # SQLite helpers
   discovery/         # Index + date-template discovery
@@ -32,71 +59,57 @@ src/car_auction/
   parsing/           # PVRM + TVRM parsers
   pipeline.py        # discover → download → parse → load
   cli.py             # CLI
-scripts/
-  full_scrape.py            # Resumable index scrape (skips stored URLs)
-  scrape_templates.py       # Scrape discovered TVRM template URLs
-  discover_templates_era.py # Historical TVRM URL probing
-  probe_tvrm_gaps.py        # Extra sparse-year TVRM probing
-  cleanup_db.py             # Date backfill / duplicate cleanup
-data/
-  raw/pvrm|tvrm/            # Downloaded PDFs (local only)
-  processed/                # CSV/XLSX exports + logs (local only)
-  db/auction.db             # SQLite DB (local only)
-tests/test_smoke.py         # Small runnable checks
+scripts/             # Resumable / historical ops workflows
+data/                # Local only (gitignored outputs)
+tests/               # Pytest smoke checks
 ```
 
 ## Installation
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate   # Windows
-pip install -e .
-pip install -r requirements.txt
+# Windows
+.venv\Scripts\activate
+# macOS / Linux
+# source .venv/bin/activate
+
+pip install -e ".[dev]"
 
 # Recommended for older/garbled TVRM PDFs:
-pip install rapidocr-onnxruntime onnxruntime numpy
-# or: pip install -e ".[ocr]"
+pip install -e ".[ocr]"
 ```
 
 ## Usage
 
 ```bash
 # Index-page discovery only (fast)
-python -m car_auction.cli discover --limit 20
+car-auction discover --limit 20
+# or: python -m car_auction.cli discover --limit 20
 
-# Download + parse a small sample (CLI)
-python -m car_auction.cli download --limit 10
+# Download + parse a small sample
+car-auction download --limit 10
 
 # Preferred full/resumable scrape (skips URLs already in DB)
 python scripts/full_scrape.py
 
-# Scrape previously discovered TVRM template URLs (also skips stored)
+# Scrape previously discovered TVRM template URLs
 python scripts/scrape_templates.py
 
-# Full historical TVRM probing via CLI (slow; many HEAD requests)
-python -m car_auction.cli download --include-templates
+# Full historical TVRM probing (slow; many requests)
+car-auction download --include-templates
 
-# Export CSV + Excel
-python -m car_auction.cli export --out data/processed/auction_lots.csv
-python -m car_auction.cli export --out data/processed/auction_lots.xlsx
-```
-
-Without install, from repo root:
-
-```bash
-python -m src.car_auction.cli discover
+# Export
+car-auction export --out data/processed/auction_lots.csv
+car-auction export --out data/processed/auction_lots.xlsx
 ```
 
 ### Incremental behavior
 
 - Existing PDFs in `data/raw/` are **not re-downloaded**
 - `scripts/full_scrape.py` and `scripts/scrape_templates.py` **skip URLs already stored** with lots
-- Basic CLI `download` still re-parses PDFs it walks; prefer the scripts above for day-to-day runs
 - `--include-templates` is opt-in and slow; use only when hunting historical TVRM gaps
 
-## Where to find the results
-
-After scraping/parsing, outputs live under `data/` (gitignored; kept on your machine):
+## Outputs
 
 | Path | What it is |
 |------|------------|
@@ -108,7 +121,7 @@ After scraping/parsing, outputs live under `data/` (gitignored; kept on your mac
 Quick DB check:
 
 ```bash
-.venv\Scripts\python -c "import sqlite3; c=sqlite3.connect('data/db/auction.db'); print(c.execute('select category,count(*) from auction_events group by category').fetchall()); print('lots', c.execute('select count(*) from auction_lots').fetchone()[0])"
+python -c "import sqlite3; c=sqlite3.connect('data/db/auction.db'); print(c.execute('select category,count(*) from auction_events group by category').fetchall()); print('lots', c.execute('select count(*) from auction_lots').fetchone()[0])"
 ```
 
 ## Parsing notes
@@ -121,9 +134,21 @@ Quick DB check:
 | Unsold lots | Stored with `remarks=U/S` and null amount |
 | Special fee (`@1,000`) | Stored as amount with `remarks=special_fee` |
 
-Auction dates are inferred from PDF headers / filenames / URLs / TD index labels.
+## Tests
+
+```bash
+pytest -q
+```
+
+Core unit checks cover date inference, amount tokens, and TVRM token triples.
+Optional local PDF integration checks run only when sample PDFs exist under `data/raw/`.
 
 ## Be a good citizen
 
-Target site is public TD web content. Keep request rates modest and avoid
-high-frequency cron jobs, especially with `--include-templates`.
+Target site is public TD web content. This project uses a descriptive User-Agent,
+request delays, and retries. Keep request rates modest and avoid high-frequency
+cron jobs, especially with `--include-templates`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

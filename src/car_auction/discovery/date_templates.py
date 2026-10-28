@@ -12,6 +12,7 @@ from typing import Iterable, List
 
 import requests
 
+from .. import http
 from ..config import discovery
 from .pvrm_index import DiscoveredPDF
 
@@ -177,7 +178,7 @@ def discover_tvrm_pdfs_from_templates(
     if strategies is None:
         strategies = _default_strategies()
 
-    sess = session or requests.Session()
+    sess = session or http.get_session()
 
     for strat in strategies:
         fail_streak = 0
@@ -190,7 +191,13 @@ def discover_tvrm_pdfs_from_templates(
 
             try:
                 # Prefer GET stream over HEAD: TD sometimes answers HEAD poorly.
-                resp = sess.get(url, timeout=15, stream=True, allow_redirects=True)
+                resp = http.get(
+                    url,
+                    timeout=15,
+                    stream=True,
+                    session=sess,
+                    allow_redirects=True,
+                )
                 status = resp.status_code
                 resp.close()
             except requests.RequestException:

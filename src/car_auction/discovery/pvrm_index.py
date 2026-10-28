@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, List
 
-import requests
 from bs4 import BeautifulSoup
 
+from .. import http
 from ..config import discovery
 
 
@@ -28,7 +28,7 @@ def _full_url(path: str) -> str:
 
 
 def _extract_pdfs_from_page(url: str) -> List[DiscoveredPDF]:
-    resp = requests.get(url, timeout=20)
+    resp = http.get(url, timeout=20)
     resp.raise_for_status()
     # TD pages are UTF-8; requests may guess ISO-8859-1 from missing/wrong headers.
     resp.encoding = resp.apparent_encoding or "utf-8"
