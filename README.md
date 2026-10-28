@@ -1,38 +1,22 @@
-# Hong Kong Car License Auction Result Crawler
+# Hong Kong Car Plate Auction Result Crawler
 
 [![CI](https://github.com/Steven-YCH/Car_Plate_Auction_Crawlling/actions/workflows/ci.yml/badge.svg)](https://github.com/Steven-YCH/Car_Plate_Auction_Crawlling/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Build a **local SQLite database** of Hong Kong vehicle registration mark (VRM)
-auction results published by the Transport Department (TD).
+Collect Hong Kong vehicle registration mark (VRM) auction results published by the Transport Department into a local SQLite database, then export to CSV or Excel.
 
 Supports both auction types:
 
 - **PVRM** — Personalized Vehicle Registration Marks
 - **TVRM** — Traditional Vehicle Registration Marks
 
-> Repo folder name keeps the historical spelling `Crawlling`. The Python package
-> is `car_auction` / console script `car-auction`.
-
-## Why this project is interesting
-
-Most “portfolio scrapers” hit a clean JSON API. This one has to deal with
-**messy real-world government PDFs**:
-
-- TD publishes results as PDFs linked from index pages
-- historical TVRM files used many filename patterns over decades
-- older PDFs have broken fonts / ToUnicode maps, so OCR fallback is required
-- lot rows encode sold prices, unsold (`U/S`), and special-fee `@amount` cases
-- auction dates must be inferred from headers, filenames, labels, and URLs
-
 ```text
 TD index pages / date-URL templates
         │
         ▼
-discovery/*  ──►  download (data/raw/)  ──►  parse (+ OCR)  ──►  SQLite
-                                                              │
-                                                              └─► CSV / Excel
+discovery  ──►  download (data/raw/)  ──►  parse (+ OCR)  ──►  SQLite
+                                                           │
+                                                           └─► CSV / Excel
 ```
 
 ## Features
@@ -58,10 +42,10 @@ src/car_auction/
   ocr.py             # RapidOCR / PaddleOCR fallback
   parsing/           # PVRM + TVRM parsers
   pipeline.py        # discover → download → parse → load
-  cli.py             # CLI
+  cli.py             # CLI (`car-auction`)
 scripts/             # Resumable / historical ops workflows
-data/                # Local only (gitignored outputs)
-tests/               # Pytest smoke checks
+data/                # Local outputs (gitignored)
+tests/               # Pytest checks
 ```
 
 ## Installation
@@ -78,6 +62,8 @@ pip install -e ".[dev]"
 # Recommended for older/garbled TVRM PDFs:
 pip install -e ".[ocr]"
 ```
+
+Requires Python 3.10+.
 
 ## Usage
 
@@ -129,7 +115,7 @@ python -c "import sqlite3; c=sqlite3.connect('data/db/auction.db'); print(c.exec
 | Format | How it is handled |
 |--------|-------------------|
 | Modern PVRM handouts | Native PDF text; mark-group + amount lines |
-| Modern TVRM handouts | Native text triples: `PREFIX / NUMBER / AMOUNT\|U/S\|@AMOUNT` |
+| Modern TVRM handouts | Native text triples: `PREFIX / NUMBER / AMOUNT|U/S|@AMOUNT` |
 | Older TVRM (broken fonts) | RapidOCR + row-wise spatial parse |
 | Unsold lots | Stored with `remarks=U/S` and null amount |
 | Special fee (`@1,000`) | Stored as amount with `remarks=special_fee` |
@@ -140,15 +126,5 @@ python -c "import sqlite3; c=sqlite3.connect('data/db/auction.db'); print(c.exec
 pytest -q
 ```
 
-Core unit checks cover date inference, amount tokens, and TVRM token triples.
+Core checks cover date inference, amount tokens, and TVRM token triples.
 Optional local PDF integration checks run only when sample PDFs exist under `data/raw/`.
-
-## Be a good citizen
-
-Target site is public TD web content. This project uses a descriptive User-Agent,
-request delays, and retries. Keep request rates modest and avoid high-frequency
-cron jobs, especially with `--include-templates`.
-
-## License
-
-MIT — see [LICENSE](LICENSE).

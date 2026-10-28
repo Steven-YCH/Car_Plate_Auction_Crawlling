@@ -49,7 +49,7 @@ class DownloadSettings:
     request_delay_seconds: float = 0.35
     user_agent: str = (
         "car-auction/0.1 (+https://github.com/Steven-YCH/Car_Plate_Auction_Crawlling; "
-        "portfolio research crawler; contact via GitHub issues)"
+        "contact via GitHub issues)"
     )
 
 
